@@ -23,12 +23,13 @@ GTK_INCLUDES= \
 	-I$(PREFIX)/include/gtk-2.0 \
 	-I$(PREFIX)/lib/gtk-2.0/include \
 	-I$(PREFIX)/include/atk-1.0 \
-	-I$(PREFIX)/include/pango-1.0 \
 	-I$(PREFIX)/include/cairo \
+	-I$(PREFIX)/include/gdk-pixbuf-2.0 \
+	-I$(PREFIX)/include/pango-1.0 \
 	-I$(PREFIX)/include/glib-2.0 \
 	-I$(PREFIX)/lib/glib-2.0/include \
-	-I$(PREFIX)/include/gettext \
-	-I$(PREFIX)/include
+	-I$(PREFIX)/include \
+	-I$(PREFIX)/include/gettext
 
 INCLUDEDIRS=  -I.. \
               -I../scintilla/include \
@@ -59,11 +60,9 @@ endif
 
 OBJS =	about.o build.o callbacks.o dialogs.o document.o editor.o encodings.o filetypes.o \
 		geanyentryaction.o geanymenubuttonaction.o geanyobject.o geanywraplabel.o highlighting.o \
-		interface.o keybindings.o keyfile.o \
-		log.o main.o msgwindow.o navqueue.o notebook.o plugins.o pluginutils.o \
-		prefs.o printing.o project.o \
-		sciwrappers.o search.o socket.o stash.o \
-		symbols.o templates.o toolbar.o tools.o sidebar.o \
+		keybindings.o keyfile.o log.o main.o msgwindow.o navqueue.o notebook.o \
+		plugins.o pluginutils.o prefs.o printing.o project.o sciwrappers.o search.o \
+		socket.o stash.o symbols.o templates.o toolbar.o tools.o sidebar.o \
 		ui_utils.o utils.o win32.o
 
 .c.o:

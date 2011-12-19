@@ -351,7 +351,7 @@ static void make_comment_block(GString *comment_text, gint filetype_idx, guint i
 	gchar *tmp;
 	gchar *prefix;
 	gchar **lines;
-	guint i, len;
+	gsize i, len;
 	gint template_eol_mode;
 	const gchar *template_eol_char;
 	GeanyFiletype *ft = filetypes_index(filetype_idx);
@@ -364,12 +364,7 @@ static void make_comment_block(GString *comment_text, gint filetype_idx, guint i
 	template_eol_mode = utils_get_line_endings(comment_text->str, comment_text->len);
 	template_eol_char = utils_get_eol_char(template_eol_mode);
 
-	co = ft->comment_open;
-	cc = NULL;
-	if (NZV(co))
-		cc = ft->comment_close;
-	else
-		co = ft->comment_single;
+	filetype_get_comment_open_close(ft, FALSE, &co, &cc);
 	if (NZV(co))
 	{
 		if (NZV(cc))
@@ -660,7 +655,7 @@ static void templates_replace_command(GString *text, const gchar *file_name,
 		while (*match != '}' && *match != '\0')
 			match++;
 
-		wildcard = g_strndup(cmd, match - cmd + 1);
+		wildcard = g_strndup(cmd, (gsize) (match - cmd + 1));
 		cmd = g_strndup(wildcard + 9, strlen(wildcard) - 10);
 
 		result = run_command(cmd, file_name, file_type, func_name);

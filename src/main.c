@@ -43,7 +43,6 @@
 #include "main.h"
 #include "prefix.h"
 #include "prefs.h"
-#include "interface.h"
 #include "support.h"
 #include "callbacks.h"
 #include "log.h"
@@ -156,13 +155,19 @@ static GOptionEntry entries[] =
 static void setup_window_position(void)
 {
 	/* interprets the saved window geometry */
-	if (prefs.save_winpos && ui_prefs.geometry[0] != -1)
-	{
-		gtk_window_move(GTK_WINDOW(main_widgets.window), ui_prefs.geometry[0], ui_prefs.geometry[1]);
-		gtk_window_set_default_size(GTK_WINDOW(main_widgets.window), ui_prefs.geometry[2], ui_prefs.geometry[3]);
-		if (ui_prefs.geometry[4] == 1)
-			gtk_window_maximize(GTK_WINDOW(main_widgets.window));
-	}
+	if (!prefs.save_winpos)
+		return;
+
+	if (ui_prefs.geometry[0] != -1 && ui_prefs.geometry[1] != -1)
+		gtk_window_move(GTK_WINDOW(main_widgets.window),
+			ui_prefs.geometry[0], ui_prefs.geometry[1]);
+
+	if (ui_prefs.geometry[2] != -1 && ui_prefs.geometry[3] != -1)
+		gtk_window_set_default_size(GTK_WINDOW(main_widgets.window),
+			ui_prefs.geometry[2], ui_prefs.geometry[3]);
+
+	if (ui_prefs.geometry[4] == 1)
+		gtk_window_maximize(GTK_WINDOW(main_widgets.window));
 }
 
 
@@ -224,6 +229,8 @@ static void apply_settings(void)
 static void main_init(void)
 {
 	/* inits */
+	ui_init_builder();
+
 	main_widgets.window				= NULL;
 	app->project			= NULL;
 	ui_widgets.open_fontsel		= NULL;
@@ -268,9 +275,6 @@ static void main_init(void)
 	gtk_widget_set_name(ui_lookup_widget(main_widgets.window, "menubar1"), "GeanyMenubar");
 	gtk_widget_set_name(main_widgets.toolbar, "GeanyToolbar");
 
-	/* for some reason we need to set the initial size request,
-	 * otherwise the main window gets crazy dimensions */
-	gtk_widget_set_size_request(main_widgets.window, 10, 10);
 	gtk_window_set_default_size(GTK_WINDOW(main_widgets.window),
 		GEANY_WINDOW_DEFAULT_WIDTH, GEANY_WINDOW_DEFAULT_HEIGHT);
 }
@@ -1252,6 +1256,8 @@ void main_quit()
 	geany_object = NULL;
 
 	g_free(app);
+
+	ui_finalize_builder();
 
 	gtk_main_quit();
 }

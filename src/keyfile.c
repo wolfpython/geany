@@ -99,9 +99,9 @@ GPtrArray *pref_groups = NULL;
 
 static struct
 {
-	int number_ft_menu_items;
-	int number_non_ft_menu_items;
-	int number_exec_menu_items;
+	gint number_ft_menu_items;
+	gint number_non_ft_menu_items;
+	gint number_exec_menu_items;
 }
 build_menu_prefs;
 
@@ -150,8 +150,6 @@ static void init_pref_groups(void)
 	stash_group_add_toggle_button(group, &interface_prefs.highlighting_invert_all,
 		"highlighting_invert_all", FALSE, "check_highlighting_invert");
 
-	stash_group_add_toggle_button(group, &search_prefs.suppress_dialogs,
-		"pref_main_suppress_search_dialogs", FALSE, "check_ask_suppress_search_dialogs");
 	stash_group_add_toggle_button(group, &search_prefs.use_current_word,
 		"pref_main_search_use_current_word", TRUE, "check_search_use_current_word");
 
@@ -548,6 +546,8 @@ static void save_ui_prefs(GKeyFile *config)
 
 	if (prefs.save_winpos)
 	{
+		GdkWindowState wstate;
+
 		g_key_file_set_integer(config, PACKAGE, "treeview_position",
 				gtk_paned_get_position(GTK_PANED(ui_lookup_widget(main_widgets.window, "hpaned1"))));
 		g_key_file_set_integer(config, PACKAGE, "msgwindow_position",
@@ -555,11 +555,8 @@ static void save_ui_prefs(GKeyFile *config)
 
 		gtk_window_get_position(GTK_WINDOW(main_widgets.window), &ui_prefs.geometry[0], &ui_prefs.geometry[1]);
 		gtk_window_get_size(GTK_WINDOW(main_widgets.window), &ui_prefs.geometry[2], &ui_prefs.geometry[3]);
-		if (gdk_window_get_state(gtk_widget_get_window(main_widgets.window)) & GDK_WINDOW_STATE_MAXIMIZED)
-			ui_prefs.geometry[4] = 1;
-		else
-			ui_prefs.geometry[4] = 0;
-
+		wstate = gdk_window_get_state(gtk_widget_get_window(main_widgets.window));
+		ui_prefs.geometry[4] = (wstate & GDK_WINDOW_STATE_MAXIMIZED) ? 1 : 0;
 		g_key_file_set_integer_list(config, PACKAGE, "geometry", ui_prefs.geometry, 5);
 	}
 
@@ -691,6 +688,17 @@ static void load_dialog_prefs(GKeyFile *config)
 	{
 		g_key_file_set_boolean(config, PACKAGE, atomic_file_saving_key,
 			utils_get_setting_boolean(config, PACKAGE, "use_safe_file_saving", FALSE));
+	}
+
+	/* compatibility with Geany 0.21 */
+	{
+		gboolean suppress_search_dialogs = utils_get_setting_boolean(config, PACKAGE, "pref_main_suppress_search_dialogs", FALSE);
+
+		if (!g_key_file_has_key(config, "search", "pref_search_always_wrap", NULL))
+			g_key_file_set_boolean(config, "search", "pref_search_always_wrap", suppress_search_dialogs);
+
+		if (!g_key_file_has_key(config, "search", "pref_search_hide_find_dialog", NULL))
+			g_key_file_set_boolean(config, "search", "pref_search_hide_find_dialog", suppress_search_dialogs);
 	}
 
 	/* read stash prefs */
@@ -898,7 +906,7 @@ static void load_dialog_prefs(GKeyFile *config)
 static void load_ui_prefs(GKeyFile *config)
 {
 	gint *geo;
-	GError *error = NULL;
+	gsize geo_len;
 
 	ui_prefs.sidebar_visible = utils_get_setting_boolean(config, PACKAGE, "sidebar_visible", TRUE);
 	ui_prefs.msgwindow_visible = utils_get_setting_boolean(config, PACKAGE, "msgwindow_visible", TRUE);
@@ -910,33 +918,25 @@ static void load_ui_prefs(GKeyFile *config)
 				_("Type here what you want, use it as a notice/scratch board"));
 	scribble_pos = utils_get_setting_integer(config, PACKAGE, "scribble_pos", -1);
 
-	geo = g_key_file_get_integer_list(config, PACKAGE, "geometry", NULL, &error);
-	if (error)
+	geo = g_key_file_get_integer_list(config, PACKAGE, "geometry", &geo_len, NULL);
+	if (! geo || geo_len < 5)
 	{
 		ui_prefs.geometry[0] = -1;
-		g_error_free(error);
-		error = NULL;
+		ui_prefs.geometry[1] = -1;
+		ui_prefs.geometry[2] = -1;
+		ui_prefs.geometry[3] = -1;
+		ui_prefs.geometry[4] = 0;
 	}
 	else
 	{
-		gint i;
-
-		ui_prefs.geometry[0] = geo[0];
-		ui_prefs.geometry[1] = geo[1];
-		ui_prefs.geometry[2] = geo[2];
-		ui_prefs.geometry[3] = geo[3];
-		ui_prefs.geometry[4] = geo[4];
-
 		/* don't use insane values but when main windows was maximized last time, pos might be
 		 * negative (due to differences in root window and window decorations) */
-		if (ui_prefs.geometry[4] != 1)
-		{
-			for (i = 2; i < 4; i++)
-			{
-				if (ui_prefs.geometry[i] < -1)
-					ui_prefs.geometry[i] = -1;
-			}
-		}
+		/* quitting when minimized can make pos -32000, -32000 on Windows! */
+		ui_prefs.geometry[0] = MAX(-1, geo[0]);
+		ui_prefs.geometry[1] = MAX(-1, geo[1]);
+		ui_prefs.geometry[2] = MAX(-1, geo[2]);
+		ui_prefs.geometry[3] = MAX(-1, geo[3]);
+		ui_prefs.geometry[4] = geo[4] != 0;
 	}
 	hpan_position = utils_get_setting_integer(config, PACKAGE, "treeview_position", 156);
 	vpan_position = utils_get_setting_integer(config, PACKAGE, "msgwindow_position", (geo) ?
