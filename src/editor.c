@@ -42,12 +42,6 @@
 #include "SciLexer.h"
 #include "geany.h"
 
-#ifdef HAVE_REGEX_H
-# include <regex.h>
-#else
-# include "gnuregex.h"
-#endif
-
 #include "support.h"
 #include "editor.h"
 #include "document.h"
@@ -1700,9 +1694,9 @@ void editor_find_current_word_sciwc(GeanyEditor *editor, gint pos, gchar *word, 
  *
  *  @param editor The editor to operate on.
  *  @param pos The position where the word should be read from.
- *             Maybe @c -1 to use the current position.
+ *             May be @c -1 to use the current position.
  *  @param wordchars The wordchars to separate words. wordchars mean all characters to count
- *                   as part of a word. Maybe @c NULL to use the default wordchars,
+ *                   as part of a word. May be @c NULL to use the default wordchars,
  *                   see @ref GEANY_WORDCHARS.
  *
  *  @return A newly-allocated string containing the word at the given @a pos or @c NULL.
@@ -1743,9 +1737,9 @@ static gint find_previous_brace(ScintillaObject *sci, gint pos)
 	while (pos >= 0 && pos > orig_pos - 300)
 	{
 		c = sci_get_char_at(sci, pos);
-		pos--;
 		if (utils_is_opening_brace(c, editor_prefs.brace_match_ltgt))
 			return pos;
+		pos--;
 	}
 	return -1;
 }
@@ -1762,8 +1756,8 @@ static gint find_start_bracket(ScintillaObject *sci, gint pos)
 
 		if (c == ')') brackets++;
 		else if (c == '(') brackets--;
-		pos--;
 		if (brackets < 0) return pos;	/* found start bracket */
+		pos--;
 	}
 	return -1;
 }
@@ -1834,7 +1828,8 @@ static gchar *find_calltip(const gchar *word, GeanyFiletype *ft)
 
 	tag = TM_TAG(tags->pdata[0]);
 
-	if (tag->type == tm_tag_class_t && FILETYPE_ID(ft) == GEANY_FILETYPES_D)
+	if (ft->id == GEANY_FILETYPES_D &&
+		(tag->type == tm_tag_class_t || tag->type == tm_tag_struct_t))
 	{
 		/* user typed e.g. 'new Classname(' so lookup D constructor Classname::this() */
 		tags = tm_workspace_find_scoped("this", tag->name,
@@ -4320,7 +4315,13 @@ void editor_replace_spaces(GeanyEditor *editor)
 		search_pos = sci_find_text(editor->sci, SCFIND_MATCHCASE, &ttf);
 		if (search_pos == -1)
 			break;
-
+		/* only replace indentation because otherwise we can mess up alignment */
+		if (search_pos > sci_get_line_indent_position(editor->sci,
+			sci_get_line_from_position(editor->sci, search_pos)))
+		{
+			ttf.chrg.cpMin = search_pos + tab_len;
+			continue;
+		}
 		sci_set_target_start(editor->sci, search_pos);
 		sci_set_target_end(editor->sci, search_pos + tab_len);
 		sci_replace_target(editor->sci, "\t", FALSE);

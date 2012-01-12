@@ -1389,16 +1389,14 @@ Regular expressions
 
 You can use regular expressions in the Find and Replace dialogs
 by selecting the *Use regular expressions* check box (see `Matching
-options`_). The syntax is POSIX compatible, as described in the table
-below.
+options`_). The syntax is Perl compatible. Basic syntax is described
+in the table below. For full details, see
+http://www.geany.org/manual/gtk/glib/glib-regex-syntax.html.
 
 .. note::
     1. The *Use escape sequences* dialog option always applies for regular
        expressions.
     2. Searching backwards with regular expressions is not supported.
-    3. \\b, \\d, \\s, \\w are GNU extensions and may not be available
-       on non-GNU POSIX systems unless you built Geany with the
-       ``--enable-gnu-regex`` option (this is always used on Windows).
 
 **In a regular expression, the following characters are interpreted:**
 
@@ -1493,11 +1491,8 @@ the ``colorschemes`` subdirectory. They should have the extension
 ``.conf``. The default color scheme
 is read from ``filetypes.common``.
 
-The `[named_styles] section`_ is the same as for ``filetypes.common``.
-
-.. note::
-    Some filetypes do not yet support named styles so will ignore
-    any chosen color scheme.
+The `[named_styles] section`_  and `[named_colors] section`_ are the
+same as for ``filetypes.common``.
 
 The ``[theme_info]`` section can contain information about the
 theme. The ``name`` and ``description`` keys are read to set the
@@ -3604,7 +3599,7 @@ Action                               Default shortcut     Description
 ==================================== ==================== ==================================================
 Replace tabs by space                                     Replaces all tabs with the right amount of spaces.
 
-Replace spaces by tabs                                    Replaces all spaces with tab characters.
+Replace spaces by tabs                                    Replaces leading spaces with tab characters.
 
 Toggle current fold                                       Toggles the folding state of the current code block.
 
@@ -3629,6 +3624,18 @@ Remove Error Indicators                                   Remove any error indic
 Remove Markers and Error Indicators                       Combines ``Remove Markers`` and
                                                           ``Remove Error Indicators``.
 ==================================== ==================== ==================================================
+
+
+Project keybindings
+```````````````````
+=============================== ========================= ==================================================
+Action                          Default shortcut          Description
+=============================== ========================= ==================================================
+New                                                       Create a new project.
+Open                                                      Opens a project file.
+Properties                                                Shows project properties.
+Close                                                     Close the current project.
+=============================== ========================= ==================================================
 
 
 Build keybindings
@@ -3885,9 +3892,14 @@ manual format is:
 * ``key=foreground_color;background_color;bold_flag;italic_flag``
 
 Colors have to be specified as RGB hex values prefixed by
-0x. For example red is 0xff0000, blue is 0x0000ff. The values are
-case-insensitive, but it is a good idea to use small letters. Bold
-and italic are flags and should only be "true" or "false". If their
+0x or # similar to HTML/CSS hex triplets. For example, all of the following
+are valid values for pure red; 0xff0000, 0xf00, #ff0000, or #f00.  The
+values are case-insensitive but it is a good idea to use lower-case.
+Note that you can also use *named colors* as well by substituting the
+color value with the name of a color as defined in the ``[named_colors]``
+section, see the `[named_colors] Section`_ for more information.
+
+Bold and italic are flags and should only be "true" or "false". If their
 value is something other than "true" or "false", "false" is assumed.
 
 You can omit fields to use the values from the style named ``"default"``.
@@ -4116,7 +4128,7 @@ As of Geany 0.19 this section is supplemented by the `[build-menu] section`_.
 Values that are set in the [build-menu] section will override those in this section.
 
 error_regex
-    This is a GNU-style extended regular expression to parse a filename
+    This is a regular expression to parse a filename
     and line number from build output. If undefined, Geany will fall
     back to its default error message parsing.
 
@@ -4211,8 +4223,23 @@ different files.
     entry in the above example, but they must be declared after the
     original style.
 
-This section can be overridden with color scheme files - see the `Color
-schemes menu`_.
+
+[named_colors] section
+``````````````````````
+Named colors declared here can be used in the ``[styling]`` or
+``[named_styles]`` section of any filetypes.* file or color scheme.
+
+For example::
+
+    [named_colors]
+    my_red_color=#FF0000
+    my_blue_color=#0000FF
+
+    [named_styles]
+    foo=my_red_color;my_blue_color;false;true
+
+This allows to define a color pallete by name so that to change a color
+scheme-wide only involves changing the hex value in a single location.
 
 [styling] section
 `````````````````

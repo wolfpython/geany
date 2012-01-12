@@ -621,6 +621,7 @@ G_MODULE_EXPORT void on_notebook1_switch_page_after(GtkNotebook *notebook, GtkNo
 		ui_document_show_hide(doc); /* update the document menu */
 		build_menu_update(doc);
 		sidebar_update_tag_list(doc, FALSE);
+		document_highlight_tags(doc);
 
 		/* We delay the check to avoid weird fast, unintended switching of notebook pages when
 		 * the 'file has changed' dialog is shown while the switch event is not yet completely
@@ -1602,10 +1603,11 @@ G_MODULE_EXPORT void on_menu_open_selected_file1_activate(GtkMenuItem *menuitem,
 	g_return_if_fail(doc != NULL);
 
 	sel = editor_get_default_selection(doc->editor, TRUE, wc);
+	setptr(sel, utils_get_locale_from_utf8(sel));
 
 	if (sel != NULL)
 	{
-		gchar *locale_filename, *filename = NULL;
+		gchar *filename = NULL;
 
 		if (g_path_is_absolute(sel))
 			filename = g_strdup(sel);
@@ -1614,6 +1616,7 @@ G_MODULE_EXPORT void on_menu_open_selected_file1_activate(GtkMenuItem *menuitem,
 			gchar *path;
 
 			path = utils_get_current_file_dir_utf8();
+			setptr(path, utils_get_locale_from_utf8(path));
 			if (!path)
 				path = g_get_current_dir();
 
@@ -1624,16 +1627,28 @@ G_MODULE_EXPORT void on_menu_open_selected_file1_activate(GtkMenuItem *menuitem,
 			{
 				/* try the project's base path */
 				setptr(path, project_get_base_path());
+				setptr(path, utils_get_locale_from_utf8(path));
 				setptr(filename, g_build_path(G_DIR_SEPARATOR_S, path, sel, NULL));
 			}
 			g_free(path);
+#ifdef G_OS_UNIX
+			if (! g_file_test(filename, G_FILE_TEST_EXISTS))
+				setptr(filename, g_build_path(G_DIR_SEPARATOR_S, "/usr/local/include", sel, NULL));
+
+			if (! g_file_test(filename, G_FILE_TEST_EXISTS))
+				setptr(filename, g_build_path(G_DIR_SEPARATOR_S, "/usr/include", sel, NULL));
+#endif
 		}
 
-		locale_filename = utils_get_locale_from_utf8(filename);
-		document_open_file(locale_filename, FALSE, NULL, NULL);
+		if (g_file_test(filename, G_FILE_TEST_EXISTS))
+			document_open_file(filename, FALSE, NULL, NULL);
+		else
+		{
+			setptr(sel, utils_get_utf8_from_locale(sel));
+			ui_set_statusbar(TRUE, _("Could not open file %s (File not found)"), sel);
+		}
 
 		g_free(filename);
-		g_free(locale_filename);
 		g_free(sel);
 	}
 }

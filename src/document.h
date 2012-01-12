@@ -62,6 +62,7 @@ typedef struct GeanyFilePrefs
 	gboolean		gio_unsafe_save_backup;
 	gboolean		use_gio_unsafe_file_saving; /* whether to use GIO as the unsafe backend */
 	gchar			*extract_filetype_regex;	/* regex to extract filetype on opening */
+	gboolean		tab_close_switch_to_mru;
 }
 GeanyFilePrefs;
 
@@ -235,6 +236,8 @@ void document_replace_sel(GeanyDocument *doc, const gchar *find_text, const gcha
 void document_update_tags(GeanyDocument *doc);
 
 void document_update_tag_list_in_idle(GeanyDocument *doc);
+
+void document_highlight_tags(GeanyDocument *doc);
 
 void document_set_encoding(GeanyDocument *doc, const gchar *new_encoding);
 

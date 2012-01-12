@@ -206,15 +206,49 @@ static gboolean read_named_style(const gchar *named_style, GeanyLexerStyle *styl
 }
 
 
-static void parse_color(const gchar *str, gint *clr)
+/* Parses a color in `str` which can be an HTML color (ex. #0099cc),
+ * an abbreviated HTML color (ex. #09c) or a hex string color
+ * (ex. 0x0099cc). The result of the conversion is stored into the
+ * location pointed to by `clr`. */
+static void parse_color(GKeyFile *kf, const gchar *str, gint *clr)
 {
 	gint c;
+	gchar hex_clr[9] = { 0 };
+	gchar *named_color = NULL;
+	const gchar *start;
 
-	/* ignore empty strings */
+	g_return_if_fail(clr != NULL);
+
 	if (G_UNLIKELY(! NZV(str)))
 		return;
 
-	c = utils_strtod(str, NULL, FALSE);
+	named_color = g_key_file_get_string(kf, "named_colors", str, NULL);
+	if  (named_color)
+		str = named_color;
+
+	if (str[0] == '#')
+		start = str + 1;
+	else if (strlen(str) > 1 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X'))
+		start = str + 2;
+	else
+	{
+		geany_debug("Bad color '%s'", str);
+		g_free(named_color);
+		return;
+	}
+
+	if (strlen(start) == 3)
+	{
+		snprintf(hex_clr, 9, "0x%c%c%c%c%c%c", start[0], start[0],
+			start[1], start[1], start[2], start[2]);
+	}
+	else
+		snprintf(hex_clr, 9, "0x%s", start);
+
+	g_free(named_color);
+
+	c = utils_strtod(hex_clr, NULL, FALSE);
+
 	if (c > -1)
 	{
 		*clr = c;
@@ -224,11 +258,10 @@ static void parse_color(const gchar *str, gint *clr)
 }
 
 
-static void parse_keyfile_style(gchar **list,
+static void parse_keyfile_style(GKeyFile *kf, gchar **list,
 		const GeanyLexerStyle *default_style, GeanyLexerStyle *style)
 {
 	gsize len;
-	gchar *str;
 
 	g_return_if_fail(default_style);
 	g_return_if_fail(style);
@@ -239,28 +272,43 @@ static void parse_keyfile_style(gchar **list,
 		return;
 
 	len = g_strv_length(list);
-
-	str = list[0];
-	if (len == 1 && isalpha(str[0]))
+	if (len == 0)
+		return;
+	else if (len == 1)
 	{
-		if (!read_named_style(str, style))
-			geany_debug(
-				"No named style '%s'! Check filetype styles or %s color scheme.",
-				str, NVL(editor_prefs.color_scheme, "filetypes.common"));
-	}
-	else
-	{
-		switch (len)
+		gchar **items = g_strsplit(list[0], ",", 0);
+		if (items != NULL)
 		{
-			case 4:
-				style->italic = utils_atob(list[3]);
-			case 3:
-				style->bold = utils_atob(list[2]);
-			case 2:
-				parse_color(list[1], &style->background);
-			case 1:
-				parse_color(list[0], &style->foreground);
+			if (g_strv_length(items) > 0)
+			{
+				if (g_hash_table_lookup(named_style_hash, items[0]) != NULL)
+				{
+					if (!read_named_style(list[0], style))
+						geany_debug("Unable to read named style '%s'", items[0]);
+					g_strfreev(items);
+					return;
+				}
+				else if (strchr(list[0], ',') != NULL)
+				{
+					geany_debug("Unknown named style '%s'", items[0]);
+					g_strfreev(items);
+					return;
+				}
+			}
+			g_strfreev(items);
 		}
+	}
+
+	switch (len)
+	{
+		case 4:
+			style->italic = utils_atob(list[3]);
+		case 3:
+			style->bold = utils_atob(list[2]);
+		case 2:
+			parse_color(kf, list[1], &style->background);
+		case 1:
+			parse_color(kf, list[0], &style->foreground);
 	}
 }
 
@@ -278,9 +326,13 @@ static void get_keyfile_style(GKeyFile *config, GKeyFile *configh,
 
 	list = g_key_file_get_string_list(configh, "styling", key_name, &len, NULL);
 	if (list == NULL)
+	{
 		list = g_key_file_get_string_list(config, "styling", key_name, &len, NULL);
+		parse_keyfile_style(config, list, &gsd_default, style);
+	}
+	else
+		parse_keyfile_style(configh, list, &gsd_default, style);
 
-	parse_keyfile_style(list, &gsd_default, style);
 	g_strfreev(list);
 }
 
@@ -444,7 +496,7 @@ static void add_named_style(GKeyFile *config, const gchar *key)
 	{
 		GeanyLexerStyle *style = g_new0(GeanyLexerStyle, 1);
 
-		parse_keyfile_style(list, &gsd_default, style);
+		parse_keyfile_style(config, list, &gsd_default, style);
 		g_hash_table_insert(named_style_hash, g_strdup(key), style);
 	}
 	g_strfreev(list);
@@ -531,7 +583,7 @@ static void load_named_styles(GKeyFile *config, GKeyFile *config_home)
 }
 
 
-static void styleset_common_init(guint ft_id, GKeyFile *config, GKeyFile *config_home)
+static void styleset_common_init(GKeyFile *config, GKeyFile *config_home)
 {
 	load_named_styles(config, config_home);
 
@@ -939,7 +991,7 @@ void highlighting_init_styles(guint filetype_idx, GKeyFile *config, GKeyFile *co
 	/* None filetype handled specially */
 	if (filetype_idx == GEANY_FILETYPES_NONE)
 	{
-		styleset_common_init(GEANY_FILETYPES_NONE, config, configh);
+		styleset_common_init(config, configh);
 		return;
 	}
 	/* All stylesets depend on filetypes.common */

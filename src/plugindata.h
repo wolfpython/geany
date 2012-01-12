@@ -52,7 +52,7 @@
  * @warning You should not test for values below 200 as previously
  * @c GEANY_API_VERSION was defined as an enum value, not a macro.
  */
-#define GEANY_API_VERSION 211
+#define GEANY_API_VERSION 212
 
 /** The Application Binary Interface (ABI) version, incremented whenever
  * existing fields in the plugin data types have to be changed or reordered.
@@ -477,6 +477,7 @@ typedef struct UIUtilsFuncs
 				const gchar *text, gint history_len);
 	void		(*ui_menu_add_document_items_sorted) (GtkMenu *menu, struct GeanyDocument *active,
 				GCallback callback, GCompareFunc compare_func);
+	const gchar* (*ui_lookup_stock_label)(const gchar *stock_id);
 }
 UIUtilsFuncs;
 
@@ -521,8 +522,8 @@ MsgWinFuncs;
 /* See encodings.h */
 typedef struct EncodingFuncs
 {
-	gchar*			(*encodings_convert_to_utf8) (const gchar *buffer, gsize size, gchar **used_encoding);
-	gchar* 			(*encodings_convert_to_utf8_from_charset) (const gchar *buffer, gsize size,
+	gchar*			(*encodings_convert_to_utf8) (const gchar *buffer, gssize size, gchar **used_encoding);
+	gchar* 			(*encodings_convert_to_utf8_from_charset) (const gchar *buffer, gssize size,
 													 const gchar *charset, gboolean fast);
 	const gchar*	(*encodings_get_charset_from_index) (gint idx);
 }
